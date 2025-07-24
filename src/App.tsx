@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Settings, Sun, Moon, Sunset, Sunrise } from '@phosphor-icons/react'
+import { Settings, Sun, Moon, Sunset, Sunrise, Quotes, ArrowClockwise } from '@phosphor-icons/react'
 
 type GreetingStyle = 'casual' | 'formal' | 'inspirational'
 
@@ -63,6 +63,9 @@ function App() {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [tempName, setTempName] = useState('')
+  const [motivationalQuote, setMotivationalQuote] = useKV('daily-quote', '')
+  const [quoteDate, setQuoteDate] = useKV('quote-date', '')
+  const [isLoadingQuote, setIsLoadingQuote] = useState(false)
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -75,6 +78,31 @@ function App() {
   useEffect(() => {
     setTempName(userName)
   }, [userName, isSettingsOpen])
+
+  // Generate or refresh daily quote
+  const generateDailyQuote = async () => {
+    setIsLoadingQuote(true)
+    try {
+      const timeOfDay = getTimeOfDay()
+      const prompt = spark.llmPrompt`Generate a short, inspiring motivational quote (under 50 words) that's appropriate for ${timeOfDay}. Make it uplifting and relevant to starting fresh or maintaining momentum throughout the day. Return only the quote without attribution.`
+      
+      const quote = await spark.llm(prompt)
+      setMotivationalQuote(quote.trim())
+      setQuoteDate(new Date().toDateString())
+    } catch (error) {
+      console.error('Failed to generate quote:', error)
+      setMotivationalQuote("Every moment is a fresh beginning.")
+    }
+    setIsLoadingQuote(false)
+  }
+
+  // Check if we need a new daily quote
+  useEffect(() => {
+    const today = new Date().toDateString()
+    if (quoteDate !== today || !motivationalQuote) {
+      generateDailyQuote()
+    }
+  }, [quoteDate, motivationalQuote])
 
   const timeOfDay = getTimeOfDay()
   const greeting = greetingStyles[greetingStyle][timeOfDay]
@@ -225,6 +253,39 @@ function App() {
             </Card>
           ))}
         </div>
+
+        {/* Motivational Quote */}
+        <Card className="border-0 shadow-lg bg-gradient-to-r from-accent/20 to-primary/20 backdrop-blur-sm">
+          <CardContent className="p-8 text-center space-y-4">
+            <div className="flex justify-center">
+              <Quotes size={32} weight="duotone" className="text-accent" />
+            </div>
+            
+            {isLoadingQuote ? (
+              <div className="space-y-2">
+                <div className="animate-pulse bg-muted/50 h-4 rounded w-3/4 mx-auto"></div>
+                <div className="animate-pulse bg-muted/50 h-4 rounded w-1/2 mx-auto"></div>
+              </div>
+            ) : (
+              <blockquote className="text-lg md:text-xl font-medium text-foreground leading-relaxed italic">
+                "{motivationalQuote}"
+              </blockquote>
+            )}
+            
+            <div className="pt-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={generateDailyQuote}
+                disabled={isLoadingQuote}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ArrowClockwise size={16} className="mr-2" />
+                New Quote
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
