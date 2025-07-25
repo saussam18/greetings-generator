@@ -63,8 +63,7 @@ function App() {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [tempName, setTempName] = useState('')
-  const [motivationalQuote, setMotivationalQuote] = useKV('daily-quote', '')
-  const [quoteDate, setQuoteDate] = useKV('quote-date', '')
+  const [quoteData, setQuoteData] = useKV('daily-quote-data', { quote: '', date: '' })
   const [isLoadingQuote, setIsLoadingQuote] = useState(false)
 
   useEffect(() => {
@@ -87,11 +86,10 @@ function App() {
       const prompt = spark.llmPrompt`Generate a short, inspiring motivational quote (under 50 words) that's appropriate for ${timeOfDay}. Make it uplifting and relevant to starting fresh or maintaining momentum throughout the day. Return only the quote without attribution.`
       
       const quote = await spark.llm(prompt)
-      setMotivationalQuote(quote.trim())
-      setQuoteDate(new Date().toDateString())
+      setQuoteData({ quote: quote.trim(), date: new Date().toDateString() })
     } catch (error) {
       console.error('Failed to generate quote:', error)
-      setMotivationalQuote("Every moment is a fresh beginning.")
+      setQuoteData({ quote: "Every moment is a fresh beginning.", date: new Date().toDateString() })
     }
     setIsLoadingQuote(false)
   }
@@ -99,10 +97,10 @@ function App() {
   // Check if we need a new daily quote
   useEffect(() => {
     const today = new Date().toDateString()
-    if (quoteDate !== today || !motivationalQuote) {
+    if (quoteData.date !== today || !quoteData.quote) {
       generateDailyQuote()
     }
-  }, [quoteDate, motivationalQuote])
+  }, [quoteData.date, quoteData.quote])
 
   const timeOfDay = getTimeOfDay()
   const greeting = greetingStyles[greetingStyle][timeOfDay]
@@ -268,7 +266,7 @@ function App() {
               </div>
             ) : (
               <blockquote className="text-lg md:text-xl font-medium text-foreground leading-relaxed italic">
-                "{motivationalQuote}"
+                "{quoteData.quote}"
               </blockquote>
             )}
             
